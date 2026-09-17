@@ -71,8 +71,7 @@ def _slots_to_display_order(slots, mapping: dict) -> List[str]:
     return order
 
 
-# ==================== 配置模型 ====================
-
+# ==================== 配置模型 ====================\n
 
 class PluginSection(PluginConfigBase):
     __ui_label__ = "插件"
@@ -143,23 +142,22 @@ class UserSummarySection(PluginConfigBase):
     __ui_order__ = 2
     enabled: bool = Field(
         default=True,
-        description="是否启用个人总结功能（关闭后所有人都无法使用 /mysummary）",
+        description="是否启用个人总结功能（/mysummary）",
         json_schema_extra={"label": "启用个人总结"},
     )
+    # 查看他人名单模式：白名单=仅名单内可看他人；黑名单=名单内禁止看他人，其余人可看
     view_others_mode: Literal["白名单", "黑名单"] = Field(
         default="白名单",
-        description="查看他人总结的名单模式：白名单=仅名单内用户可看他人；黑名单=名单内用户禁止看他人，其余人可看",
+        description="控制『查看他人个人总结』的名单生效模式。白名单=仅名单内的用户能看他人；黑名单=名单内的用户禁止看他人，其余人可看",
         json_schema_extra={"label": "查看他人名单模式"},
     )
+    # 配合上面模式控制谁能看他人；为空时若为白名单则所有人可看他人（缺省放行），若为黑名单则没人被禁
     allowed_users: List[str] = Field(
-        default_factory=list,
-        description="配合上面的名单模式控制谁能查看他人总结。所有人始终可以查看自己。",
-        json_schema_extra={
-            "label": "查看他人名单",
-            "hint": "为空时所有人都能查看他人；白名单=仅名单内可看他人；黑名单=名单内禁止看他人",
-        },
+        default=[],
+        description="配合上面的模式控制谁能查看他人总结。所有人始终可以查看自己的总结",
+        json_schema_extra={"label": "查看他人权限名单（QQ号）"},
     )
-    # 4 个下拉槽位，按槽位顺序显示；选"无"隐藏；含"并排"组合项
+    # 4 个下拉槽位；可选\"无\"以隐藏；并排项保留原 2 并排布局
     slot_1: PersonalModuleOption = Field(
         default="3H活跃轨迹",
         description="第 1 个显示的模块（选『无』则此位置不显示）",
@@ -167,7 +165,7 @@ class UserSummarySection(PluginConfigBase):
     )
     slot_2: PersonalModuleOption = Field(
         default="群友画像+炫压抑评级(并排)",
-        description="第 2 个显示的模块（『…并排』表示两个模块横向并排）",
+        description="第 2 个显示的模块",
         json_schema_extra={"label": "显示模块 2"},
     )
     slot_3: PersonalModuleOption = Field(
@@ -188,28 +186,28 @@ class AutoSummarySection(PluginConfigBase):
     __ui_order__ = 3
     enabled: bool = Field(
         default=False,
-        description="是否启用每日自动总结",
-        json_schema_extra={"label": "启用每日自动总结"},
+        description="是否启用每日定时自动总结",
+        json_schema_extra={"label": "启用自动总结"},
     )
     time: str = Field(
         default="23:00",
-        description="每日自动总结时间（HH:MM，24小时制）",
+        description="每日执行时间（HH:MM，24 小时制）",
         json_schema_extra={"label": "执行时间"},
     )
     timezone: str = Field(
         default="Asia/Shanghai",
-        description="时区设置（IANA 名称，如 Asia/Shanghai）",
+        description="时区（IANA 名称，如 Asia/Shanghai、America/New_York）",
         json_schema_extra={"label": "时区"},
     )
     min_messages: int = Field(
         default=10,
-        description="生成总结所需的最少消息数量",
+        description="触发自动总结所需的群聊今日最少消息数，少于此条数的群自动跳过",
         json_schema_extra={"label": "最少消息数"},
     )
     target_chats: List[str] = Field(
-        default_factory=list,
-        description="目标群聊 QQ 号（为空则对所有活跃群生效）",
-        json_schema_extra={"label": "目标群聊"},
+        default=[],
+        description="要执行自动总结的目标群号列表（留空表示所有活跃群聊）",
+        json_schema_extra={"label": "目标群号列表（留空=所有群）"},
     )
 
 
@@ -219,107 +217,140 @@ class CommandPermissionSection(PluginConfigBase):
     __ui_order__ = 4
     mode: Literal["黑名单", "白名单"] = Field(
         default="黑名单",
-        description="群聊命令权限模式：黑名单=列表中的群禁用命令；白名单=只有列表中的群可用命令",
-        json_schema_extra={"label": "权限模式"},
+        description="群聊权限控制模式。黑名单：列表中的群禁用命令；白名单：只有列表中的群可用",
+        json_schema_extra={"label": "群聊权限模式"},
     )
     target_chats: List[str] = Field(
-        default_factory=list,
-        description="黑/白名单群号列表",
-        json_schema_extra={"label": "名单群聊"},
+        default=[],
+        description="群号列表（配合上面的模式生效）",
+        json_schema_extra={"label": "生效群号列表"},
     )
     admin_users: List[str] = Field(
-        default_factory=list,
-        description="/summary 管理员 QQ 号（有值时仅列表内用户可用 /summary）",
-        json_schema_extra={"label": "/summary 管理员", "hint": "无添加则所有人皆可使用"},
+        default=[],
+        description="允许在群聊中使用 /summary 的管理员 QQ 号列表（留空表示群内所有人可用）",
+        json_schema_extra={"label": "/summary 管理员（留空=所有人）"},
     )
 
 
 class AdvancedSection(PluginConfigBase):
     __ui_label__ = "高级"
-    __ui_icon__ = "settings"
+    __ui_icon__ = "sliders"
     __ui_order__ = 5
+    # 模型任务名：宿主 model_task_config 下的任务键（如 utils / planner / replyer / lpmm 等）。
+    # 插件使用 ctx.llm.generate(model=...) 只认【任务名】；建议填快速无思考任务（utils / flash）。
     model_task: str = Field(
         default="utils",
-        description="生成总结/分析使用的【模型任务名】。该任务内配置的模型会按其 model_list 随机/轮询使用。"
-        "建议 utils 或 planner（通常是快速非思考模型）；replyer 是主回复模型，可能较慢、需配合调大 LLM 超时。",
-        json_schema_extra={
-            "label": "模型任务",
-            "hint": "填 MaiBot 的【任务名】(如 utils / planner / replyer / memory)，不是模型名；"
-            "想指定具体模型请在 MaiBot 的 model_config.toml 改该任务的 model_list。填错会自动回退 utils。",
-        },
+        description="分析使用的宿主模型任务名（不是具体模型名，是任务名，如 utils、planner、replyer）。填错会在加载时校验并回退到 utils",
+        json_schema_extra={"label": "模型任务名 (task)"},
     )
     inject_memory: bool = Field(
         default=False,
-        description="实验性：把生成的总结注入麦麦的会话上下文，供其记忆系统吸收。"
-        "群聊总结注入到该群；个人总结注入为对该用户的记忆。",
-        json_schema_extra={
-            "label": "总结注入麦麦记忆（实验性）",
-            "hint": "实验功能，默认关闭；开启后总结内容会进入麦麦记忆",
-        },
+        description="实验性：把生成的总结注入麦麦记忆（群聊总结注入该群记忆，个人总结注入对该用户的记忆），让麦麦能记起总结过的事",
+        json_schema_extra={"label": "注入麦麦记忆 (实验性)"},
     )
     llm_timeout_seconds: int = Field(
         default=60,
-        description="单次 LLM 调用的最长等待时间（秒），到点放弃该次分析项。"
-        "注意：宿主对插件的单次能力调用约有 30 秒 RPC 硬上限，设置大于 30 通常不会有额外效果。",
-        json_schema_extra={"label": "LLM 调用超时（秒）", "hint": "默认 60；受宿主约 30 秒 RPC 上限约束"},
+        description="单次 LLM 调用的客户端最长等待时间（秒）。注意：受宿主约 30 秒 RPC 硬上限约束，设太大在宿主超时时无额外效果",
+        json_schema_extra={"label": "LLM 调用超时(秒)"},
     )
     render_timeout_seconds: int = Field(
         default=25,
-        description="单次图片渲染的超时时间（秒）。图片较复杂或机器较慢时可适当调大。",
-        json_schema_extra={"label": "图片渲染超时（秒）", "hint": "默认 25"},
+        description="单次 HTML 渲染为图片的超时时间（秒）。根据服务器性能调整",
+        json_schema_extra={"label": "图片渲染超时(秒)"},
     )
 
 
 class DailyAnalysisConfig(PluginConfigBase):
+    """每日分析插件根配置模型"""
+
     plugin: PluginSection = Field(default_factory=PluginSection)
     summary: SummarySection = Field(default_factory=SummarySection)
     user_summary: UserSummarySection = Field(default_factory=UserSummarySection)
     auto_summary: AutoSummarySection = Field(default_factory=AutoSummarySection)
-    command_permission: CommandPermissionSection = Field(default_factory=CommandPermissionSection)
+    command_permission: CommandPermissionSection = Field(
+        default_factory=CommandPermissionSection
+    )
     advanced: AdvancedSection = Field(default_factory=AdvancedSection)
 
 
-# ==================== 插件主类 ====================
-
+# ==================== 插件主类 ====================\n
 
 class DailyAnalysisPlugin(MaiBotPlugin):
-    """每日分析插件"""
+    """每日分析插件主类"""
 
     config_model = DailyAnalysisConfig
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        self._scheduler_task: Optional[asyncio.Task] = None
         self._service: Optional[AnalysisService] = None
         self._renderer: Optional[SummaryRenderer] = None
-        self._scheduler_task: Optional[asyncio.Task] = None
-        self._last_auto_date: Optional[date] = None
-        # 正在生成总结的任务标识，防止同一会话/用户并发刷命令
+        # 正在后台生成的 (stream_id, scope) 集合，防止同一聊天流重复触发多次
+        # scope: "group:YYYY-MM-DD" 或 "user:target_uid:YYYY-MM-DD"
         self._generating: set = set()
-        # 后台总结任务集合（命令秒回、重活后台跑）；on_unload 时统一取消
-        self._bg_tasks: set = set()
+        # 跟踪所有后台分析/发图任务，卸载/重载时统一取消，避免悬挂协程
+        self._background_tasks: set = set()
 
     # ---------- 生命周期 ----------
 
     async def on_load(self) -> None:
-        adv = self.config.advanced
-        model_task = await self._validated_model_task()
-        self._service = AnalysisService(self.ctx, model_task, adv.llm_timeout_seconds)
-        self._renderer = SummaryRenderer(self.ctx, self._render_timeout_ms())
+        """插件加载：初始化服务，启动定时调度器"""
+        self.logger.info("每日分析插件正在加载...")
+        await self._init_runtime_services()
         self._start_scheduler()
-        self.ctx.logger.info(
-            f"每日分析插件已加载（模型任务: {model_task}，LLM超时: {adv.llm_timeout_seconds}s，"
-            f"渲染超时: {adv.render_timeout_seconds}s）"
+        self.logger.info("每日分析插件加载完成")
+
+    async def on_unload(self) -> None:
+        """插件卸载：取消调度器及所有进行中的后台分析任务"""
+        self.logger.info("每日分析插件正在卸载...")
+        if self._scheduler_task and not self._scheduler_task.done():
+            self._scheduler_task.cancel()
+            try:
+                await self._scheduler_task
+            except asyncio.CancelledError:
+                pass
+            self._scheduler_task = None
+
+        # 取消所有后台总结/发图任务
+        pending = [t for t in self._background_tasks if not t.done()]
+        if pending:
+            self.logger.info(f"正在取消 {len(pending)} 个后台总结任务...")
+            for t in pending:
+                t.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+        self._background_tasks.clear()
+        self._generating.clear()
+
+        self.logger.info("每日分析插件已卸载")
+
+    async def on_config_change(self) -> None:
+        """配置热更新：重新初始化服务与调度器"""
+        self.logger.info("每日分析插件配置已更新，重新应用...")
+        await self._init_runtime_services()
+        self._start_scheduler()
+
+    async def _init_runtime_services(self) -> None:
+        """初始化底层分析与渲染服务（绑定最新的 ctx 与配置）"""
+        # 校验并回退模型任务
+        validated_task = await self._validated_model_task()
+        self._service = AnalysisService(
+            self.ctx,
+            model=validated_task,
+            call_timeout_s=self._llm_timeout_seconds(),
         )
+        self._renderer = SummaryRenderer(
+            self.ctx,
+            timeout_ms=self._render_timeout_ms(),
+        )
+
+    def _llm_timeout_seconds(self) -> int:
+        return max(5, int(self.config.advanced.llm_timeout_seconds or 60))
 
     def _render_timeout_ms(self) -> int:
         return max(5, int(self.config.advanced.render_timeout_seconds or 25)) * 1000
 
     async def _validated_model_task(self) -> str:
-        """校验配置的模型任务名是否为宿主可用任务；非法（如误填模型名）则回退 utils 并告警。
-
-        ctx.llm.generate(model=...) 只接受【任务名】(resolve_task_name 对未知名抛 ValueError)，
-        因此这里在加载/热更新时主动校验，避免误填导致每次分析静默失败。
-        """
+        """校验配置的模型任务名是否为宿主可用任务；非法（如误填模型名）则回退 utils 并告警。"""
         want = (self.config.advanced.model_task or "utils").strip() or "utils"
         try:
             res = await self.ctx.llm.get_available_models()
@@ -328,72 +359,22 @@ class DailyAnalysisPlugin(MaiBotPlugin):
                 if want in models:
                     return want
                 fallback = "utils" if "utils" in models else str(models[0])
-                self.ctx.logger.warning(
-                    f"配置的模型任务 '{want}' 不在可用任务列表 {models} 中"
-                    f"（只能填任务名、不能填模型名），已回退到 '{fallback}'"
+                self.logger.warning(
+                    f"配置的模型任务 '{want}' 不在宿主可用任务列表 {models} 中，已自动回退到 '{fallback}'"
                 )
                 return fallback
-        except Exception as e:
-            self.ctx.logger.warning(f"校验模型任务可用性失败，按配置值 '{want}' 使用: {e}")
+        except Exception as exc:
+            self.logger.warning(f"获取可用模型任务列表失败: {exc}，使用配置值 '{want}'")
+            return want
         return want
 
-    async def on_unload(self) -> None:
-        await self._stop_scheduler()
-        await self._cancel_bg_tasks()
-        self.ctx.logger.info("每日分析插件已卸载")
-
-    def _spawn_bg(self, coro: Any) -> None:
-        """创建并跟踪后台任务；完成后自动移除引用。命令秒回、重活放后台跑，
-        绕开宿主对命令处理的 60 秒硬超时；任务集合在 on_unload 时统一取消。"""
-        task = asyncio.create_task(coro)
-        self._bg_tasks.add(task)
-        task.add_done_callback(self._bg_tasks.discard)
-
-    async def _cancel_bg_tasks(self) -> None:
-        """卸载（on_unload）时取消所有未完成的后台总结任务并等待退出。
-
-        注意：热重载（on_config_update）不调用本方法、也不取消在途任务——它只原地
-        更新 _service/_renderer 的属性，在途任务持有同一对象引用、用的是不可变快照，
-        属良性不一致；故意不在保存配置时掐断用户刚发起的 /summary。
-        """
-        tasks = list(self._bg_tasks)
-        self._bg_tasks.clear()
-        for t in tasks:
-            if not t.done():
-                t.cancel()
-        for t in tasks:
-            try:
-                await t
-            except asyncio.CancelledError:
-                pass
-            except Exception as e:
-                self.ctx.logger.warning(f"后台任务清理时异常: {e}")
-
-    async def on_config_update(self, scope: str, config_data: dict, version: str) -> None:
-        if scope != "self":
-            return
-        # 同步分析模型任务与超时设置
-        if self._service is not None:
-            self._service.model = await self._validated_model_task()
-            self._service.call_timeout_s = max(5, int(self.config.advanced.llm_timeout_seconds or 60))
-        if self._renderer is not None:
-            self._renderer.timeout_ms = self._render_timeout_ms()
-        # 自动总结配置可能变化，重启调度器
-        await self._stop_scheduler()
-        self._start_scheduler()
-
-    # ---------- WebUI 布局：每个配置节一个标签页（分页） ----------
+    # ---------- WebUI 配置 Schema 覆盖（按配置节分标签页） ----------
 
     def get_webui_config_schema(self, **kwargs: Any) -> Dict[str, Any]:
-        """在 SDK 自动生成的配置 Schema 基础上，把布局改为「每个配置节一个标签页」。
-
-        这样 WebUI 会把『插件 / 群聊总结 / 个人总结 / 自动总结 / 命令权限 / 高级』
-        分别渲染成可切换的页签，而不是堆在一页里。
-        """
+        """在 SDK 自动生成的配置 Schema 基础上，把布局改为「每个配置节一个标签页」。"""
         try:
             schema = super().get_webui_config_schema(**kwargs)
         except Exception:
-            # SDK 基类方法缺失/签名不兼容时，交还宿主走兜底，绝不让配置页崩
             return {}
         try:
             if isinstance(schema, dict):
@@ -417,161 +398,298 @@ class DailyAnalysisPlugin(MaiBotPlugin):
                         )
                     schema["layout"] = {"type": "tabs", "tabs": tabs}
         except Exception:
-            # 任何异常都不应影响配置 Schema 的返回，保持 SDK 原样
             return schema
         return schema
 
     # ---------- 工具：能力返回解析 ----------
 
     @staticmethod
-    def _extract_list(result: Any, key: str) -> List[dict]:
-        """从能力返回中稳健提取列表（兼容 list 或 {"success", key:[...]} envelope）"""
-        if isinstance(result, list):
-            return [item for item in result if isinstance(item, dict)]
-        if isinstance(result, dict):
-            if result.get("success") is False:
-                return []
-            val = result.get(key)
-            if isinstance(val, list):
-                return [item for item in val if isinstance(item, dict)]
+    def _extract_messages(capability_result: Any) -> List[dict]:
+        """从 ctx.message.get_by_time_in_chat 的返回中提取消息列表"""
+        if not capability_result:
+            return []
+        if isinstance(capability_result, list):
+            return capability_result
+        if isinstance(capability_result, dict):
+            for key in ("messages", "data", "result", "items"):
+                val = capability_result.get(key)
+                if isinstance(val, list):
+                    return val
         return []
 
-    @staticmethod
-    def _as_id_set(values: Any) -> set:
-        """把配置中的 QQ/群号列表归一化为字符串集合"""
-        out = set()
-        for v in values or []:
-            s = str(v).strip()
-            if s:
-                out.add(s)
-        return out
-
-    # ---------- 消息查询与归一化 ----------
+    # ---------- 工具：消息归一化 ----------
 
     @staticmethod
-    def _text_from_segments(raw_message: list) -> str:
-        """从 raw_message 段重建发言者本人的文本：仅取 text 段（at 段渲染为 @名字），
-        刻意跳过 reply 段（被引用的原消息）。
+    def _normalize_message(msg: Any) -> Optional[dict]:
+        """将不同版本的消息结构归一化为插件内部使用的统一字典。
 
-        背景（真机验证）：当 B 回复 A 时，宿主会把『被引用的原消息文本』拼到 B 的
-        processed_plain_text 前面（见宿主 src/chat/message_receive/message.py 的
-        process_reply_component），导致 A 的话被误记成 B 所说。改从 raw_message 的
-        text/at 段重建即可只拿到 B 本人的话。
+        注意：MaiBot 宿主的 process_reply_component 会把「被回复的原消息文本」
+        直接拼进回复者的 processed_plain_text，造成回复者被记成说了被回复的话。
+        这里检测到存在 reply 段时，从 raw_message 的非 reply 段（text/at）
+        重新拼装出回复者本人的真实文本，丢弃被引用的原文。
         """
-        parts: List[str] = []
-        for seg in raw_message:
-            if not isinstance(seg, dict):
-                continue
-            stype = seg.get("type")
-            data = seg.get("data")
-            if stype == "text" and isinstance(data, str):
-                parts.append(data)
-            elif stype == "at" and isinstance(data, dict):
-                name = (
-                    data.get("target_user_cardname")
-                    or data.get("target_user_nickname")
-                    or data.get("target_user_id")
-                    or ""
-                )
-                if name:
-                    parts.append(f"@{name}")
-            # 跳过 reply / image / emoji / voice / forward 等段
-        return " ".join(p for p in parts if p).strip()
-
-    @classmethod
-    def _normalize_message(cls, m: dict) -> Optional[dict]:
-        """把新 SDK 的嵌套消息 dict 归一化为分析层需要的扁平结构"""
-        if not isinstance(m, dict):
-            return None
-        info = m.get("message_info") or {}
-        uinfo = info.get("user_info") or {}
-        ginfo = info.get("group_info") or {}
-        try:
-            ts = float(m.get("timestamp") or 0)
-        except (ValueError, TypeError):
-            ts = 0.0
-        # 丢弃非法/缺失时间戳的消息：datetime.fromtimestamp(<=0) 在 Windows 会抛 OSError
-        if ts <= 0:
+        if not isinstance(msg, dict):
             return None
 
-        # 回复消息文本修正：若该消息含 reply 段，宿主会把被引用的原消息文本拼进
-        # processed_plain_text，故改用 raw_message 的 text/at 段重建发言者本人的话；
-        # 非回复消息沿用 processed_plain_text（行为完全不变）。
-        raw_segments = m.get("raw_message") or []
-        has_reply = any(
-            isinstance(s, dict) and s.get("type") == "reply" for s in raw_segments
+        # 读取原始段列表（优先 raw_message，兜底 segments / content）
+        raw_segs = (
+            msg.get("raw_message")
+            or msg.get("segments")
+            or msg.get("content")
         )
-        text = (
-            cls._text_from_segments(raw_segments)
-            if has_reply
-            else (m.get("processed_plain_text") or "")
+
+        user_id = str(
+            msg.get("user_id")
+            or msg.get("sender_id")
+            or msg.get("author_id")
+            or ""
+        )
+        nickname = str(
+            msg.get("user_nickname")
+            or msg.get("nickname")
+            or msg.get("sender_name")
+            or msg.get("author_name")
+            or ""
+        )
+        cardname = str(
+            msg.get("user_cardname")
+            or msg.get("cardname")
+            or msg.get("card")
+            or ""
+        )
+
+        # 宿主默认的清洗文本
+        plain_text = str(
+            msg.get("processed_plain_text")
+            or msg.get("plain_text")
+            or msg.get("text")
+            or msg.get("message")
+            or ""
+        )
+
+        # 修复回复引用拼接 bug：若存在 reply 段，用 raw_message 的 text/at 段重构
+        if isinstance(raw_segs, list) and any(
+            isinstance(s, dict) and s.get("type") in ("reply", "quote") for s in raw_segs
+        ):
+            rebuilt_parts = []
+            for s in raw_segs:
+                if not isinstance(s, dict):
+                    continue
+                stype = s.get("type")
+                if stype in ("reply", "quote"):
+                    continue
+                sdata = s.get("data")
+                if isinstance(sdata, dict):
+                    if stype == "text":
+                        t = str(sdata.get("text") or "")
+                        if t:
+                            rebuilt_parts.append(t)
+                    elif stype == "at":
+                        t = str(sdata.get("qq") or sdata.get("user_id") or "")
+                        if t:
+                            rebuilt_parts.append(f"@{t}")
+                elif isinstance(s.get("text"), str) and stype != "reply":
+                    rebuilt_parts.append(s["text"])
+            if rebuilt_parts:
+                plain_text = "".join(rebuilt_parts).strip()
+
+        # 时间戳（秒）
+        t = msg.get("time") or msg.get("timestamp") or msg.get("created_at") or 0
+        try:
+            t = float(t)
+        except Exception:
+            t = 0.0
+
+        is_cmd = bool(msg.get("is_command", False))
+        is_notify = bool(
+            msg.get("is_notify", False)
+            or msg.get("message_type") in ("notify", "notice")
         )
 
         return {
-            "user_id": str(uinfo.get("user_id") or ""),
-            "user_nickname": uinfo.get("user_nickname") or "未知用户",
-            "user_cardname": uinfo.get("user_cardname") or "",
-            "processed_plain_text": text,
-            "time": ts,
-            "is_command": bool(m.get("is_command")),
-            "is_notify": bool(m.get("is_notify")),
-            "group_id": str((ginfo or {}).get("group_id") or ""),
+            "user_id": user_id,
+            "user_nickname": nickname,
+            "user_cardname": cardname,
+            "processed_plain_text": plain_text,
+            "time": t,
+            "is_command": is_cmd,
+            "is_notify": is_notify,
         }
 
-    async def _get_messages(self, stream_id: str, start_ts: float, end_ts: float) -> List[dict]:
-        """查询某个聊天流在 [start_ts, end_ts) 内的有效消息（已归一化、按时间正序）"""
-        if not stream_id:
-            return []
+    # ---------- 历史消息查询与归一化 ----------
+
+    async def _fetch_messages_in_range(
+        self, stream_id: str, start_dt: datetime, end_dt: datetime
+    ) -> List[dict]:
+        """查询指定聊天流在时间范围内的消息，按时间升序返回归一化列表"""
+        start_ts = int(start_dt.timestamp())
+        end_ts = int(end_dt.timestamp())
         try:
-            result = await self.ctx.message.get_by_time_in_chat(
-                stream_id,
-                start_time=float(start_ts),
-                end_time=float(end_ts),
-                limit=0,
-                limit_mode="earliest",
-                filter_mai=False,
+            res = await self.ctx.message.get_by_time_in_chat(
+                stream_id=stream_id,
+                start_time=start_ts,
+                end_time=end_ts,
                 filter_command=True,
             )
         except Exception as e:
-            self.ctx.logger.error(f"查询消息失败 (stream={stream_id}): {e}", exc_info=True)
+            self.logger.error(f"查询历史消息失败 (stream={stream_id}): {e}")
             return []
 
-        raw_messages = self._extract_list(result, "messages")
-        out: List[dict] = []
-        for m in raw_messages:
-            norm = self._normalize_message(m)
-            if norm is None:
-                continue
-            # filter_command 已在宿主侧过滤命令；这里再排除通知类
-            if norm["is_notify"]:
-                continue
-            out.append(norm)
+        raw_list = self._extract_messages(res)
+        normalized = []
+        for item in raw_list:
+            norm = self._normalize_message(item)
+            if norm and norm.get("processed_plain_text"):
+                normalized.append(norm)
 
-        out.sort(key=lambda x: x["time"])
-        return out
+        normalized.sort(key=lambda m: m.get("time", 0))
+        return normalized
 
-    # ---------- 时间范围 ----------
+    # ---------- 模块槽位解析 ----------
 
-    @staticmethod
-    def _parse_time_range(time_range: str) -> Tuple[Optional[float], Optional[float], Optional[datetime]]:
-        """解析 今天/昨天 为 (start_ts, end_ts, target_date)，不支持返回 (None, None, None)"""
-        now = datetime.now()
-        today_start = datetime(now.year, now.month, now.day)
-        if time_range in ("今天", ""):
-            return today_start.timestamp(), now.timestamp(), now
-        if time_range == "昨天":
-            yesterday_start = today_start - timedelta(days=1)
-            return yesterday_start.timestamp(), today_start.timestamp(), now - timedelta(days=1)
-        return None, None, None
+    def _get_group_slots_order(self) -> List[str]:
+        cfg = self.config.summary
+        slots = [cfg.slot_1, cfg.slot_2, cfg.slot_3, cfg.slot_4, cfg.slot_5]
+        return _slots_to_display_order(slots, _GROUP_MODULE_MAP)
 
-    # ---------- 权限 ----------
+    def _get_personal_slots_order(self) -> List[str]:
+        cfg = self.config.user_summary
+        slots = [cfg.slot_1, cfg.slot_2, cfg.slot_3, cfg.slot_4]
+        return _slots_to_display_order(slots, _PERSONAL_MODULE_MAP)
 
-    def _check_group_permission(self, group_id: str) -> bool:
-        """群聊黑/白名单权限检查（True=允许）"""
-        cfg = self.config.command_permission
-        target_chats = self._as_id_set(cfg.target_chats)
+    # ---------- 群聊总结生图流程 ----------
+
+    async def _build_group_summary_image(
+        self,
+        messages: List[dict],
+        summary: str,
+        time_range: str,
+        target_date: datetime,
+    ) -> Optional[str]:
+        """组装分析数据并渲染群聊总结长图，返回纯 base64"""
+        slots = self._get_group_slots_order()
+        active_users = AnalysisService.find_active_users(
+            messages,
+            min_count=5,
+            max_users=8,
+        )
+
+        async def _topics():
+            if "Topics" in slots:
+                try:
+                    return await self._service.extract_topics(messages)
+                except Exception as e:
+                    self.logger.warning(f"话题分析异常: {e}")
+            return []
+
+        async def _titles():
+            if "Portraits" in slots:
+                try:
+                    return await self._service.generate_character_sketch(messages, active_users)
+                except Exception as e:
+                    self.logger.warning(f"群友画像分析异常: {e}")
+            return []
+
+        async def _quotes():
+            if "Quotes" in slots:
+                try:
+                    return await self._service.extract_quotes(messages)
+                except Exception as e:
+                    self.logger.warning(f"金句分析异常: {e}")
+            return []
+
+        async def _depression():
+            if "Rankings" in slots:
+                try:
+                    cfg = self.config.summary
+                    return await self._service.analyze_depression(
+                        messages,
+                        active_users,
+                        max_display=int(cfg.max_depression_display or 6),
+                        show_bottom=bool(cfg.depression_show_bottom),
+                    )
+                except Exception as e:
+                    self.logger.warning(f"炫压抑评级异常: {e}")
+            return []
+
+        topics_res, titles_res, quotes_res, dep_res = await asyncio.gather(
+            _topics(), _titles(), _quotes(), _depression()
+        )
+
+        summary_data = {
+            "summary": summary,
+            "topics": topics_res,
+            "titles": titles_res,
+            "quotes": quotes_res,
+            "depression": dep_res,
+        }
+
+        return await self._renderer.render_group_summary(
+            messages=messages,
+            summary_data=summary_data,
+            slots=slots,
+            time_range=time_range,
+            target_date=target_date,
+            highlight_time_mode=self.config.summary.highlight_time_mode,
+        )
+
+    # ---------- 个人总结生图流程 ----------
+
+    async def _build_user_summary_image(
+        self,
+        user_messages: List[dict],
+        user_name: str,
+        user_id: str,
+        target_date: datetime,
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """组装分析数据并渲染个人总结长图，返回 (image_base64, summary_text)"""
+        slots = self._get_personal_slots_order()
+        time_range = "今天"
+
+        try:
+            analysis_res = await self._service.analyze_user_summary(
+                user_messages, user_name, time_range
+            )
+        except Exception as e:
+            self.logger.warning(f"个人总结分析异常: {e}")
+            analysis_res = None
+
+        if not analysis_res:
+            return None, None
+
+        image_base64 = await self._renderer.render_user_summary(
+            user_messages=user_messages,
+            user_name=user_name,
+            user_id=user_id,
+            analysis_data=analysis_res,
+            slots=slots,
+            target_date=target_date,
+        )
+        return image_base64, analysis_res.get("summary")
+
+    # ---------- 记忆注入 (实验性) ----------
+
+    async def _inject_memory(self, stream_id: str, content: str, source_tag: str) -> None:
+        """把总结内容注入麦麦记忆上下文，支持群聊/个人两类"""
+        try:
+            await self.ctx.call_capability(
+                "maisaka.context.append",
+                stream_id=stream_id,
+                content=content,
+                tag=source_tag,
+            )
+            self.logger.info(f"已将总结注入麦麦记忆: stream={stream_id}, tag={source_tag}")
+        except Exception as e:
+            self.logger.debug(f"注入记忆未成功（宿主可能不支持或该功能未开启）: {e}")
+
+    # ---------- 权限与过滤 ----------
+
+    def _is_group_allowed(self, group_id: str) -> bool:
+        """根据命令权限配置判断该群是否允许执行命令"""
+        mode = self.config.command_permission.mode
+        target_chats = [str(c) for c in self.config.command_permission.target_chats if c]
         gid = str(group_id)
-        if cfg.mode == "白名单":
+        if mode == "白名单":
             # 白名单：列表为空则全部禁用；否则仅列表内允许
             return bool(target_chats) and gid in target_chats
         # 黑名单：列表内禁用，其余允许
@@ -588,13 +706,14 @@ class DailyAnalysisPlugin(MaiBotPlugin):
             summary = await self._service.analyze_group_summary(messages, len(messages))
             if not summary:
                 self.ctx.logger.error(f"群 {group_id} 群聊总结文本生成失败")
+                await self.ctx.send.text("⚠️ 群聊总结生成失败（模型分析未返回有效内容），请稍后重试。", stream_id)
                 return
             image_base64 = await self._build_group_summary_image(
                 messages, summary, time_range, target_date
             )
             if not image_base64:
-                # 按需求：不发文字兜底，仅在 MaiBot 端报错
                 self.ctx.logger.error(f"群 {group_id} 的群聊总结图片渲染失败")
+                await self.ctx.send.text("⚠️ 群聊总结图片渲染失败，请检查渲染环境或稍后重试。", stream_id)
                 return
             await self.ctx.send.image(image_base64, stream_id)
             if self.config.advanced.inject_memory:
@@ -617,6 +736,7 @@ class DailyAnalysisPlugin(MaiBotPlugin):
             )
             if not image_base64:
                 self.ctx.logger.error(f"用户 {query_user_id} 的个人总结图片渲染失败")
+                await self.ctx.send.text("⚠️ 个人总结图片渲染失败，请检查渲染环境或稍后重试。", stream_id)
                 return
             await self.ctx.send.image(image_base64, stream_id)
             if self.config.advanced.inject_memory and user_summary_text:
@@ -633,482 +753,355 @@ class DailyAnalysisPlugin(MaiBotPlugin):
 
     @Command("summary", description="生成群聊总结", pattern=r"^/summary(?:\s+(?P<args>.*))?$")
     async def cmd_summary(
-        self, stream_id: str = "", group_id: str = "", user_id: str = "", **kwargs: Any
-    ) -> Tuple[bool, str, bool]:
+        self,
+        event: Any,
+        args: Optional[str] = None,
+        **kwargs: Any,
+    ) -> Tuple[bool, Optional[str], int]:
+        """处理 /summary [今天|昨天] 命令"""
+        if not self.config.plugin.enabled:
+            return False, None, 0
+
+        stream_id = str(getattr(event, "stream_id", "") or "")
+        group_id = str(getattr(event, "group_id", "") or "")
+        user_id = str(getattr(event, "user_id", "") or "")
+
+        # 仅群聊可用
+        if not group_id:
+            return True, "该命令仅在群聊中可用", 1
+
+        # 群权限检查
+        if not self._is_group_allowed(group_id):
+            return True, None, 0
+
+        # 管理员限制：非空时仅列表内可用
+        admin_users = [str(u) for u in self.config.command_permission.admin_users if u]
+        if admin_users and user_id not in admin_users:
+            self.logger.info(f"用户 {user_id} 未在管理员列表中，拒绝执行 /summary")
+            return True, f"你没有权限使用 /summary 命令（仅限管理员：{admin_users}）", 1
+
+        # 解析时间范围
+        time_arg = (args or "").strip()
+        now = datetime.now()
+        if time_arg in ("昨天", "yesterday", "yt"):
+            time_range = "昨天"
+            target_date = now - timedelta(days=1)
+            start_dt = datetime.combine(target_date.date(), datetime.min.time())
+            end_dt = datetime.combine(target_date.date(), datetime.max.time())
+        else:
+            time_range = "今天"
+            target_date = now
+            start_dt = datetime.combine(now.date(), datetime.min.time())
+            end_dt = now
+
+        # 防重复触发守护
+        guard_key = f"group:{stream_id}:{target_date.strftime('%Y-%m-%d')}"
+        if guard_key in self._generating:
+            return True, f"正在为群生成{time_range}的总结，请耐心等待完成...", 1
+
+        # 查询消息
+        messages = await self._fetch_messages_in_range(stream_id, start_dt, end_dt)
+        min_msg = max(5, int(self.config.auto_summary.min_messages or 10))
+        if len(messages) < min_msg:
+            return True, f"该群{time_range}仅有 {len(messages)} 条有效消息（少于 {min_msg} 条），暂无法生成总结", 1
+
+        # 立即秒回确认提示，把重任务交给后台
+        self._generating.add(guard_key)
         try:
-            if not self.config.plugin.enabled:
-                return False, "插件未启用", False
+            await self.ctx.send.text(f"⏳ 正在分析{time_range}的聊天记录，请稍候...", stream_id)
+        except Exception:
+            self._generating.discard(guard_key)
+            raise
 
-            if not group_id:
-                return True, "非群聊消息，跳过 /summary", False
+        task = asyncio.create_task(
+            self._run_group_summary_in_background(
+                stream_id, group_id, messages, time_range, target_date, guard_key
+            )
+        )
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
 
-            if not self._check_group_permission(group_id):
-                return False, f"群 {group_id} 无 /summary 权限", False
-
-            # 管理员限制
-            admin_users = self._as_id_set(self.config.command_permission.admin_users)
-            if admin_users and str(user_id) not in admin_users:
-                return False, f"用户 {user_id} 非管理员", False
-
-            args = ((kwargs.get("matched_groups") or {}).get("args") or "").strip()
-            time_range = args if args in ("今天", "昨天") else "今天"
-
-            start_ts, end_ts, target_date = self._parse_time_range(time_range)
-            if start_ts is None:
-                await self.ctx.send.text("只支持查询今天或昨天的记录哦", stream_id)
-                return True, f"不支持的时间范围: {args}", True
-
-            messages = await self._get_messages(stream_id, start_ts, end_ts)
-            if not messages:
-                await self.ctx.send.text(f"{time_range}没有聊天记录呢", stream_id)
-                return True, "没有聊天记录", True
-
-            guard_key = f"g:{stream_id}"
-            if guard_key in self._generating:
-                await self.ctx.send.text("上一份群聊总结还在生成中，请稍候~", stream_id)
-                return True, "重复请求，生成中", True
-            self._generating.add(guard_key)
-            # 守护键已加，但后台任务尚未接管；这中间的 send.text 是 RPC 调用可能抛异常，
-            # 必须保证「只有后台任务（其 finally 会 discard）真正创建后，守护键才处于已添加状态」，
-            # 否则 send.text 失败会让 guard_key 永久滞留，该群命令被永久判为「生成中」。
-            try:
-                await self.ctx.send.text(f"⏳ 正在分析{time_range}的聊天记录，请稍候...", stream_id)
-                # 重活放后台执行，命令立即返回，避免宿主对命令处理的 60 秒硬超时把整轮分析掐断
-                self._spawn_bg(
-                    self._run_group_summary_in_background(
-                        stream_id, group_id, messages, time_range, target_date, guard_key
-                    )
-                )
-            except Exception:
-                self._generating.discard(guard_key)  # 后台任务未接管，回收守护键
-                raise  # 交外层 except 记日志（exc_info）
-            return True, "已开始生成群聊总结", True
-
-        except Exception as e:
-            self.ctx.logger.error(f"执行 /summary 出错: {e}", exc_info=True)
-            return False, f"执行出错: {e}", True
+        return True, "已开始生成群聊总结", 1
 
     # ==================== 命令：个人总结 ====================
 
     @Command("mysummary", description="生成个人总结", pattern=r"^/mysummary(?:\s+(?P<args>.*))?$")
     async def cmd_mysummary(
-        self, stream_id: str = "", group_id: str = "", user_id: str = "", **kwargs: Any
-    ) -> Tuple[bool, str, bool]:
-        try:
-            if not self.config.plugin.enabled:
-                return False, "插件未启用", False
+        self,
+        event: Any,
+        args: Optional[str] = None,
+        **kwargs: Any,
+    ) -> Tuple[bool, Optional[str], int]:
+        """处理 /mysummary [@某人|QQ号] [今天|昨天] 命令"""
+        if not self.config.plugin.enabled or not self.config.user_summary.enabled:
+            return False, None, 0
 
-            if not group_id:
-                return False, "非群聊消息", False
+        stream_id = str(getattr(event, "stream_id", "") or "")
+        group_id = str(getattr(event, "group_id", "") or "")
+        caller_id = str(getattr(event, "user_id", "") or "")
 
-            if not self._check_group_permission(group_id):
-                return False, f"群 {group_id} 无 /mysummary 权限", False
+        if not group_id:
+            return True, "该命令仅在群聊中可用", 1
 
-            if not self.config.user_summary.enabled:
-                return False, "个人总结功能已关闭", False
+        if not self._is_group_allowed(group_id):
+            return True, None, 0
 
-            current_user_id = str(user_id)
-            args = ((kwargs.get("matched_groups") or {}).get("args") or "").strip()
-            message_dict = kwargs.get("message") or {}
+        # 解析参数：[@某人|QQ号] [今天|昨天]
+        raw_args = (args or "").strip().split()
+        target_uid: Optional[str] = None
+        target_name: Optional[str] = None
+        time_arg: str = "今天"
 
-            # 解析时间范围
-            time_range = "昨天" if "昨天" in args else "今天"
+        # 检查是否 @ 了人（从 raw segments 解析）
+        at_uid = None
+        raw_msg = getattr(event, "raw_message", None) or getattr(event, "message", None)
+        if isinstance(raw_msg, list):
+            for seg in raw_msg:
+                if isinstance(seg, dict) and seg.get("type") == "at":
+                    data = seg.get("data", {})
+                    at_uid = str(data.get("qq") or data.get("user_id") or "")
+                    break
 
-            # 解析目标用户：优先 @ 消息段，其次纯数字 QQ 号
-            target_user_id = ""
-            target_user_name = ""
-            at_targets = self._extract_at_targets(message_dict)
-            if at_targets:
-                target_user_id, target_user_name = at_targets[0]
+        for token in raw_args:
+            if token in ("昨天", "yesterday", "yt"):
+                time_arg = "昨天"
+            elif token in ("今天", "today"):
+                time_arg = "今天"
+            elif token.isdigit():
+                target_uid = token
+            elif token.startswith("@") and len(token) > 1:
+                target_name = token[1:]
+
+        if at_uid:
+            target_uid = at_uid
+
+        # 默认查自己
+        if not target_uid and not target_name:
+            target_uid = caller_id
+
+        # 权限校验：查看他人时的黑/白名单检查（所有人始终能看自己）
+        is_viewing_self = target_uid == caller_id
+        if not is_viewing_self:
+            mode = self.config.user_summary.view_others_mode
+            allowed_users = [str(u) for u in self.config.user_summary.allowed_users if u]
+            if mode == "白名单":
+                # 白名单模式：列表为空时放行；有值时仅列表内可看他人
+                if allowed_users and caller_id not in allowed_users:
+                    return True, "你没有查看他人总结的权限", 1
             else:
-                for token in args.split():
-                    if token.isdigit():
-                        target_user_id = token
-                        break
+                # 黑名单模式：列表内禁止看他人
+                if caller_id in allowed_users:
+                    return True, "你已被禁止查看他人总结", 1
 
-            # 决定查看对象与权限（所有人始终可看自己；看他人受名单模式控制）
-            allowed_users = self._as_id_set(self.config.user_summary.allowed_users)
-            view_mode = self.config.user_summary.view_others_mode
-            if target_user_id and target_user_id != current_user_id:
-                if allowed_users:
-                    in_list = current_user_id in allowed_users
-                    # 白名单：不在名单→禁止；黑名单：在名单→禁止
-                    denied = (not in_list) if view_mode == "白名单" else in_list
-                    if denied:
-                        return False, f"用户 {current_user_id} 无查看他人总结权限（{view_mode}）", False
-                query_user_id = target_user_id
-                query_user_name = target_user_name or f"用户{target_user_id}"
-            else:
-                query_user_id = current_user_id
-                query_user_name = ""  # 稍后从消息记录补全
+        # 时间范围
+        now = datetime.now()
+        if time_arg == "昨天":
+            time_range = "昨天"
+            target_date = now - timedelta(days=1)
+            start_dt = datetime.combine(target_date.date(), datetime.min.time())
+            end_dt = datetime.combine(target_date.date(), datetime.max.time())
+        else:
+            time_range = "今天"
+            target_date = now
+            start_dt = datetime.combine(now.date(), datetime.min.time())
+            end_dt = now
 
-            start_ts, end_ts, target_date = self._parse_time_range(time_range)
-            if start_ts is None:
-                await self.ctx.send.text("只支持查询今天或昨天的记录哦", stream_id)
-                return True, f"不支持的时间范围: {args}", True
+        # 查询该群所有消息
+        messages = await self._fetch_messages_in_range(stream_id, start_dt, end_dt)
 
-            all_messages = await self._get_messages(stream_id, start_ts, end_ts)
-            if not all_messages:
-                await self.ctx.send.text(f"{time_range}群里没有聊天记录呢", stream_id)
-                return True, "没有聊天记录", True
+        # 过滤目标用户的消息
+        user_messages = []
+        resolved_name = target_name or ""
+        resolved_uid = target_uid or ""
 
-            user_messages = AnalysisService.filter_user_messages(all_messages, query_user_id)
+        for m in messages:
+            uid = m.get("user_id", "")
+            nick = m.get("user_nickname", "")
+            card = m.get("user_cardname", "")
+            match = False
+            if resolved_uid and uid == resolved_uid:
+                match = True
+            elif target_name and target_name in (card, nick):
+                match = True
+                if not resolved_uid and uid:
+                    resolved_uid = uid
 
-            # 从消息记录补全用户名
-            if user_messages:
-                first = user_messages[0]
-                query_user_name = (
-                    first.get("user_cardname") or first.get("user_nickname") or query_user_name
-                )
-            if not query_user_name:
-                query_user_name = f"用户{query_user_id}"
+            if match:
+                user_messages.append(m)
+                if not resolved_name:
+                    resolved_name = card or nick or uid
 
-            is_self = query_user_id == current_user_id
+        if not resolved_name:
+            resolved_name = resolved_uid or "群友"
 
-            if not user_messages:
-                who = "你" if is_self else query_user_name
-                tail = "，多说说话吧~" if is_self else "~"
-                await self.ctx.send.text(f"{time_range}{who}没有发言记录呢{tail}", stream_id)
-                return True, "用户没有发言记录", True
+        if len(user_messages) < 3:
+            who = "你" if is_viewing_self else f"用户 {resolved_name}"
+            return True, f"{who}{time_range}仅有 {len(user_messages)} 条有效发言（少于 3 条），暂无法生成个人画像", 1
 
-            if len(user_messages) < 3:
-                if is_self:
-                    await self.ctx.send.text(
-                        f"{time_range}你只发了{len(user_messages)}条消息，发言太少啦，多聊聊天再来总结吧~",
-                        stream_id,
-                    )
-                else:
-                    await self.ctx.send.text(
-                        f"{time_range}{query_user_name}只发了{len(user_messages)}条消息，发言太少无法生成总结~",
-                        stream_id,
-                    )
-                return True, "用户发言太少", True
+        # 防重复触发守护
+        guard_key = f"user:{stream_id}:{resolved_uid}:{target_date.strftime('%Y-%m-%d')}"
+        if guard_key in self._generating:
+            who = "你" if is_viewing_self else f"{resolved_name}"
+            return True, f"正在为 {who} 生成{time_range}的个人总结，请稍候...", 1
 
-            guard_key = f"u:{stream_id}:{query_user_id}"
-            if guard_key in self._generating:
-                await self.ctx.send.text("上一份个人总结还在生成中，请稍候~", stream_id)
-                return True, "重复请求，生成中", True
-            self._generating.add(guard_key)
-            # 同 cmd_summary：守护键已加但后台任务未接管，send.text 可能抛异常，
-            # 失败时必须回收 guard_key，否则该用户命令被永久判为「生成中」。
-            try:
-                await self.ctx.send.text(
-                    f"⏳ 正在分析{query_user_name}的{time_range}发言记录，请稍候...", stream_id
-                )
-                # 重活放后台执行，命令立即返回，避免宿主对命令处理的 60 秒硬超时把整轮分析掐断
-                self._spawn_bg(
-                    self._run_user_summary_in_background(
-                        stream_id, user_messages, query_user_name, query_user_id,
-                        time_range, target_date, guard_key
-                    )
-                )
-            except Exception:
-                self._generating.discard(guard_key)  # 后台任务未接管，回收守护键
-                raise  # 交外层 except 记日志（exc_info）
-            return True, "已开始生成个人总结", True
-
-        except Exception as e:
-            self.ctx.logger.error(f"执行 /mysummary 出错: {e}", exc_info=True)
-            return False, f"执行出错: {e}", True
-
-    @staticmethod
-    def _extract_at_targets(message_dict: dict) -> List[Tuple[str, str]]:
-        """从消息的 raw_message 段中提取 @ 目标 (user_id, nickname) 列表"""
-        targets: List[Tuple[str, str]] = []
-        if not isinstance(message_dict, dict):
-            return targets
-        for seg in message_dict.get("raw_message", []) or []:
-            if not isinstance(seg, dict) or seg.get("type") != "at":
-                continue
-            data = seg.get("data")
-            if not isinstance(data, dict):
-                continue
-            uid = str(data.get("target_user_id") or "")
-            name = data.get("target_user_nickname") or data.get("target_user_cardname") or ""
-            if uid:
-                targets.append((uid, name))
-        return targets
-
-    async def _inject_memory(self, stream_id: str, text: str, source_kind: str) -> None:
-        """实验性：把总结注入会话上下文，供麦麦记忆系统吸收。失败不影响主流程。"""
-        if not text or not stream_id:
-            return
+        # 立即秒回确认提示，把重任务交给后台
+        self._generating.add(guard_key)
         try:
-            await self.ctx.maisaka.context.append(
-                stream_id=stream_id,
-                segments=[{"type": "text", "content": text}],
-                visible_text=text[:200],
-                source_kind=source_kind,
+            who = "你" if is_viewing_self else f"用户 {resolved_name}"
+            await self.ctx.send.text(f"⏳ 正在分析 {who} {time_range}的发言记录，请稍候...", stream_id)
+        except Exception:
+            self._generating.discard(guard_key)
+            raise
+
+        task = asyncio.create_task(
+            self._run_user_summary_in_background(
+                stream_id, user_messages, resolved_name, resolved_uid,
+                time_range, target_date, guard_key
             )
-            self.ctx.logger.info(f"已注入总结到麦麦记忆: {source_kind}")
-        except Exception as e:
-            self.ctx.logger.warning(f"注入麦麦记忆失败: {e}")
-
-    # ==================== 总结生成（复用逻辑） ====================
-
-    async def _build_group_summary_image(
-        self, messages: List[dict], summary: str, time_range: str, target_date: datetime
-    ) -> Optional[str]:
-        """分析各模块数据并渲染群聊总结图片，返回 base64"""
-        service = self._service
-        participants = {msg.get("user_nickname", "") for msg in messages if msg.get("user_nickname")}
-        user_stats = service.analyze_user_stats(messages)
-
-        # 24 小时发言分布：直接汇总各用户已统计的 hours，避免对全量消息再遍历一趟
-        hourly_counter: Counter = Counter()
-        for stats in user_stats.values():
-            hourly_counter.update(stats.get("hours", {}))
-        hourly_distribution: Dict[int, int] = {h: hourly_counter.get(h, 0) for h in range(24)}
-
-        # 真实表情统计与总字数（汇总各用户，替代旧版用消息数/总结文案长度的估算）
-        emoji_count = sum(stats.get("emoji_count", 0) for stats in user_stats.values())
-        total_characters = sum(stats.get("char_count", 0) for stats in user_stats.values())
-
-        # Highlight Time：按配置决定显示方式
-        # - "消息时间跨度"：今日最早消息 → 渲染前最晚消息（messages 已按时间升序）
-        # - "最活跃时段"：传 None，渲染器回退到发言最多的那一小时
-        highlight_time = None
-        if self.config.summary.highlight_time_mode == "消息时间跨度" and messages:
-            try:
-                first_t = datetime.fromtimestamp(messages[0].get("time", 0))
-                last_t = datetime.fromtimestamp(messages[-1].get("time", 0))
-                highlight_time = f"{first_t:%H:%M}-{last_t:%H:%M}"
-            except (ValueError, OSError, OverflowError):
-                highlight_time = None
-
-        # 并发执行各项 LLM 分析（彼此独立），缩短整体耗时；单项异常不拖垮整图
-        results = await asyncio.gather(
-            service.analyze_topics(messages),
-            service.analyze_user_titles(messages, user_stats),
-            service.analyze_golden_quotes(messages),
-            service.analyze_depression_index(messages, user_stats),
-            return_exceptions=True,
         )
-        for r in results:
-            if isinstance(r, Exception):
-                self.ctx.logger.error(f"群聊分析子任务异常: {r}", exc_info=r)
-        topics = results[0] if isinstance(results[0], list) else []
-        user_titles = results[1] if isinstance(results[1], list) else []
-        golden_quotes = results[2] if isinstance(results[2], list) else []
-        depression_index = results[3] if isinstance(results[3], list) else []
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
 
-        return await self._renderer.generate_summary_image(
-            title=f"{time_range}的群聊总结",
-            summary_text=summary,
-            time_info=target_date.strftime("%Y-%m-%d"),
-            message_count=len(messages),
-            participant_count=len(participants),
-            emoji_count=emoji_count,
-            total_characters=total_characters,
-            topics=topics,
-            user_titles=user_titles,
-            golden_quotes=golden_quotes,
-            depression_index=depression_index,
-            hourly_distribution=hourly_distribution,
-            display_order=_slots_to_display_order(
-                [
-                    self.config.summary.slot_1,
-                    self.config.summary.slot_2,
-                    self.config.summary.slot_3,
-                    self.config.summary.slot_4,
-                    self.config.summary.slot_5,
-                ],
-                _GROUP_MODULE_MAP,
-            ),
-            target_date=target_date,
-            max_depression_display=self.config.summary.max_depression_display,
-            depression_show_bottom=self.config.summary.depression_show_bottom,
-            highlight_time=highlight_time,
-        )
+        return True, "已开始生成个人总结", 1
 
-    async def _build_user_summary_image(
-        self, user_messages: List[dict], user_name: str, user_id: str, target_date: datetime
-    ) -> Tuple[Optional[str], Optional[str]]:
-        """分析个人各模块并渲染个人总结图片，返回 (base64, summary_text)"""
-        service = self._service
-        user_stats = service.analyze_single_user_stats(user_messages)
-
-        results = await asyncio.gather(
-            service.analyze_single_user_summary(user_messages, user_name, user_id),
-            service.analyze_single_user_portrait(user_messages, user_name, user_id),
-            service.analyze_single_user_depression(user_messages, user_name, user_id),
-            service.analyze_single_user_quotes(user_messages, user_name, user_id),
-            return_exceptions=True,
-        )
-        for r in results:
-            if isinstance(r, Exception):
-                self.ctx.logger.error(f"个人分析子任务异常: {r}", exc_info=r)
-        summary_text = results[0] if isinstance(results[0], str) else None
-        portrait_data = results[1] if isinstance(results[1], dict) else None
-        depression_data = results[2] if isinstance(results[2], dict) else None
-        golden_quotes = results[3] if isinstance(results[3], list) else None
-
-        display_order = _slots_to_display_order(
-            [
-                self.config.user_summary.slot_1,
-                self.config.user_summary.slot_2,
-                self.config.user_summary.slot_3,
-                self.config.user_summary.slot_4,
-            ],
-            _PERSONAL_MODULE_MAP,
-        )
-
-        image_base64 = await self._renderer.generate_user_summary_image(
-            user_name=user_name,
-            user_id=user_id,
-            summary_text=summary_text or "",
-            message_count=user_stats["message_count"],
-            total_characters=user_stats["char_count"],
-            emoji_count=user_stats["emoji_count"],
-            hourly_distribution=user_stats["hourly_distribution"],
-            user_title=portrait_data.get("title", "") if portrait_data else "",
-            user_mbti=portrait_data.get("mbti", "") if portrait_data else "",
-            portrait_data=portrait_data,
-            depression_data=depression_data,
-            golden_quotes=golden_quotes,
-            display_order=display_order,
-            target_date=target_date,
-        )
-        return image_base64, summary_text
-
-    # ==================== 定时自动总结 ====================
+    # ==================== 每日定时自动总结调度 ====================
 
     def _start_scheduler(self) -> None:
-        if self._scheduler_task is not None and not self._scheduler_task.done():
-            return
+        """启动每日定时自动总结任务"""
+        if self._scheduler_task and not self._scheduler_task.done():
+            self._scheduler_task.cancel()
         if not self.config.plugin.enabled or not self.config.auto_summary.enabled:
+            self.logger.debug("自动总结未启用，跳过调度器启动")
             return
         self._scheduler_task = asyncio.create_task(self._scheduler_loop())
-        self.ctx.logger.info(
-            f"定时总结调度器已启动 - 执行时间: {self.config.auto_summary.time}"
-        )
-
-    async def _stop_scheduler(self) -> None:
-        task = self._scheduler_task
-        self._scheduler_task = None
-        if task is not None and not task.done():
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
-
-    def _timezone_now(self) -> datetime:
-        tz_str = self.config.auto_summary.timezone or "Asia/Shanghai"
-        try:
-            from zoneinfo import ZoneInfo
-
-            return datetime.now(ZoneInfo(tz_str))
-        except Exception as e:
-            self.ctx.logger.warning(f"时区 {tz_str} 处理失败，使用系统时间: {e}")
-            return datetime.now()
 
     async def _scheduler_loop(self) -> None:
+        """定时调度器主循环：每天在设定时间触发自动总结"""
+        import zoneinfo
+
         while True:
             try:
-                now = self._timezone_now()
-                time_str = self.config.auto_summary.time or "23:00"
+                tz_name = self.config.auto_summary.timezone or "Asia/Shanghai"
                 try:
-                    hour, minute = map(int, time_str.split(":"))
-                except ValueError:
-                    self.ctx.logger.error(f"无效的时间格式: {time_str}，使用 23:00")
+                    tz = zoneinfo.ZoneInfo(tz_name)
+                except Exception:
+                    self.logger.warning(f"未知时区 '{tz_name}'，回退到 Asia/Shanghai")
+                    tz = zoneinfo.ZoneInfo("Asia/Shanghai")
+
+                target_time_str = self.config.auto_summary.time or "23:00"
+                try:
+                    hour, minute = [int(p) for p in target_time_str.split(":", 1)]
+                except Exception:
+                    self.logger.warning(f"时间格式非法 '{target_time_str}'，回退到 23:00")
                     hour, minute = 23, 0
 
-                today_schedule = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-                if now >= today_schedule:
-                    today_schedule += timedelta(days=1)
+                now = datetime.now(tz)
+                next_run = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+                if next_run <= now:
+                    next_run += timedelta(days=1)
 
-                wait_seconds = max(1.0, (today_schedule - now).total_seconds())
-                self.ctx.logger.info(
-                    f"下次自动总结: {today_schedule.strftime('%Y-%m-%d %H:%M:%S')} "
-                    f"(等待 {int(wait_seconds // 3600)}小时{int((wait_seconds % 3600) // 60)}分钟)"
+                wait_sec = (next_run - now).total_seconds()
+                hours, rem = divmod(int(wait_sec), 3600)
+                mins = rem // 60
+                self.logger.info(
+                    f"下次自动总结: {next_run.strftime('%Y-%m-%d %H:%M:%S')} (等待 {hours}小时{mins}分钟)"
                 )
-                await asyncio.sleep(wait_seconds)
+                await asyncio.sleep(wait_sec)
 
-                current_date = self._timezone_now().date()
-                if self._last_auto_date == current_date:
-                    continue
-
-                self.ctx.logger.info(f"开始执行每日自动总结 - {current_date}")
-                await self._generate_daily_summaries()
-                self._last_auto_date = current_date
-                self.ctx.logger.info("每日自动总结执行完成")
-
+                # 时间到，执行每日自动总结
+                await self._run_daily_summary(tz)
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                self.ctx.logger.error(f"定时任务执行出错: {e}", exc_info=True)
+                self.logger.error(f"自动总结调度器循环异常: {e}", exc_info=True)
                 await asyncio.sleep(60)
 
-    async def _generate_daily_summaries(self) -> None:
-        """为所有（或指定）群聊生成今日总结并发送"""
-        # 使用配置时区计算"今天"窗口，避免宿主系统时区与配置时区不一致时取错区间
-        now = self._timezone_now()
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        start_ts = today_start.timestamp()
-        end_ts = now.timestamp()
+    async def _run_daily_summary(self, tz: Any) -> None:
+        """执行每日自动总结（遍历目标群）"""
+        self.logger.info("开始执行每日自动群聊总结...")
+        now = datetime.now(tz)
+        target_date = now
+        time_range = "今天"
+        start_dt = datetime.combine(now.date(), datetime.min.time())
+        end_dt = now
 
-        # 获取所有群聊流
+        # 获取目标聊天流
+        configured = [str(c) for c in self.config.auto_summary.target_chats if c]
+        active_streams: List[Tuple[str, str]] = []  # (stream_id, group_id)
+
         try:
-            streams_result = await self.ctx.chat.get_group_streams(platform="qq")
+            res = await self.ctx.chat.get_group_streams()
+            streams = res.get("streams") if isinstance(res, dict) else res
+            if isinstance(streams, list):
+                for item in streams:
+                    if isinstance(item, dict):
+                        sid = str(item.get("stream_id") or "")
+                        gid = str(item.get("group_id") or "")
+                        if sid and gid:
+                            if not configured or gid in configured:
+                                active_streams.append((sid, gid))
         except Exception as e:
-            self.ctx.logger.error(f"获取群聊列表失败: {e}", exc_info=True)
-            return
-        streams = self._extract_list(streams_result, "streams")
-        if not streams:
-            self.ctx.logger.info("没有可用的群聊流，跳过自动总结")
+            self.logger.error(f"获取群聊流列表失败: {e}")
             return
 
-        target_chats = self._as_id_set(self.config.auto_summary.target_chats)
-        min_messages = self.config.auto_summary.min_messages
+        if not active_streams:
+            self.logger.info("未找到符合条件的群聊流，本次自动总结结束")
+            return
 
-        for stream in streams:
-            session_id = str(stream.get("session_id") or stream.get("stream_id") or "")
-            group_id = str(stream.get("group_id") or "")
-            if not session_id:
-                continue
-            if target_chats and group_id not in target_chats:
-                continue
+        min_msg = max(5, int(self.config.auto_summary.min_messages or 10))
+        self.logger.info(f"共有 {len(active_streams)} 个群聊待总结（最少消息数 {min_msg}）")
 
+        for stream_id, group_id in active_streams:
             try:
-                # 单群整体超时兜底：避免某个群卡住（如上游慢）拖垮后续所有群
+                # 给单个群的处理设置超时保护
                 await asyncio.wait_for(
-                    self._generate_one_group_summary(
-                        session_id, group_id, start_ts, end_ts, now, min_messages
+                    self._summary_one_group_auto(
+                        stream_id, group_id, start_dt, end_dt, time_range, target_date, min_msg
                     ),
                     timeout=_AUTO_SUMMARY_PER_GROUP_TIMEOUT,
                 )
-                await asyncio.sleep(2)
             except asyncio.TimeoutError:
-                self.ctx.logger.error(f"群 {group_id} 自动总结超时（>{_AUTO_SUMMARY_PER_GROUP_TIMEOUT}s），跳过")
+                self.logger.error(f"群 {group_id} 自动总结超时(>{_AUTO_SUMMARY_PER_GROUP_TIMEOUT}s)，跳过该群")
             except Exception as e:
-                self.ctx.logger.error(f"群 {group_id} 自动总结失败: {e}", exc_info=True)
+                self.logger.error(f"群 {group_id} 自动总结执行异常: {e}", exc_info=True)
 
-    async def _generate_one_group_summary(
-        self, session_id: str, group_id: str, start_ts: float, end_ts: float,
-        now: datetime, min_messages: int,
+        self.logger.info("每日自动群聊总结全部执行完成")
+
+    async def _summary_one_group_auto(
+        self,
+        stream_id: str,
+        group_id: str,
+        start_dt: datetime,
+        end_dt: datetime,
+        time_range: str,
+        target_date: datetime,
+        min_msg: int,
     ) -> None:
-        """为单个群生成并发送今日总结（供定时任务逐群调用，带超时兜底）。"""
-        messages = await self._get_messages(session_id, start_ts, end_ts)
-        if len(messages) < min_messages:
+        """为单个群生成自动总结长图并发送"""
+        messages = await self._fetch_messages_in_range(stream_id, start_dt, end_dt)
+        if len(messages) < min_msg:
+            self.logger.info(f"群 {group_id} 今日仅有 {len(messages)} 条消息，少于 {min_msg}，跳过")
             return
 
         summary = await self._service.analyze_group_summary(messages, len(messages))
         if not summary:
-            self.ctx.logger.warning(f"群 {group_id} 自动总结文本生成失败")
+            self.logger.error(f"群 {group_id} 自动总结文本生成失败")
             return
 
-        image_base64 = await self._build_group_summary_image(messages, summary, "今天", now)
+        image_base64 = await self._build_group_summary_image(
+            messages, summary, time_range, target_date
+        )
         if not image_base64:
-            self.ctx.logger.error(f"群 {group_id} 自动总结图片渲染失败")
+            self.logger.error(f"群 {group_id} 自动总结图片渲染失败")
             return
 
-        await self.ctx.send.image(image_base64, session_id)
+        await self.ctx.send.image(image_base64, stream_id)
         if self.config.advanced.inject_memory:
             await self._inject_memory(
-                session_id, f"【今日群聊总结】{summary}", "plugin:daily_analysis:group"
+                stream_id, f"【每日自动总结】{summary}", "plugin:daily_analysis:auto"
             )
+        self.logger.info(f"群 {group_id} 自动总结已成功发送")
 
 
-def create_plugin() -> DailyAnalysisPlugin:
-    return DailyAnalysisPlugin()
+# 插件工厂入口（供 SDK 加载）
+create_plugin = DailyAnalysisPlugin
